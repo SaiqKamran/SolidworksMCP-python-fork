@@ -25,6 +25,7 @@ Implements an A3 drafting standard on SolidWorks:
 from __future__ import annotations
 
 import glob
+import ntpath
 import os
 from datetime import date as _date
 from typing import TYPE_CHECKING, Any, cast
@@ -209,7 +210,8 @@ def title_block_properties(
     Returns:
         tuple: (model properties, drawing properties).
     """
-    base = os.path.basename(model_file)
+    # SolidWorks paths are Windows paths, whatever platform this runs on.
+    base = ntpath.basename(model_file)
     description = title  # keep TITLE short so it fits the box (standard section 1)
     model_props = {
         "Description": description,
