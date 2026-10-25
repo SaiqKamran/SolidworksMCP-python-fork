@@ -68,10 +68,13 @@ CATEGORY_META: dict[str, dict[str, str]] = {
         "icon": ":material-ruler:",
         "description": (
             "Put the model's dimensions on a drawing and lay them out so nothing "
-            "overlaps: each dimension shown once, placed outside the views in "
-            "rows, and checked against the real geometry SolidWorks reports."
+            "overlaps, add a bill of materials, set the sheet scale, or make a "
+            "complete A3 drawing of a part or assembly in one call."
         ),
-        "prerequisite": "An active Drawing document with views of a model.",
+        "prerequisite": (
+            "An active Drawing document with views of a model; "
+            "generate_drawing_package only needs a saved part or assembly."
+        ),
     },
     "engineering_data": {
         "title": "Engineering Data Tools",

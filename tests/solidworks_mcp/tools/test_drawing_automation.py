@@ -15,11 +15,20 @@ import pytest
 from solidworks_mcp.adapters.base import AdapterResult, AdapterResultStatus
 from solidworks_mcp.tools.drawing_automation import (
     ArrangeDimensionsInput,
+    GenerateDrawingPackageInput,
+    InsertBomTableInput,
     InsertModelDimensionsInput,
+    SetSheetScaleInput,
     register_drawing_automation_tools,
 )
 
-_TOOLS = ("insert_model_dimensions", "arrange_dimensions")
+_TOOLS = (
+    "insert_model_dimensions",
+    "arrange_dimensions",
+    "insert_bom_table",
+    "set_sheet_scale",
+    "generate_drawing_package",
+)
 
 
 async def _tool(mcp_server: Any, name: str) -> Any:
@@ -73,6 +82,73 @@ class TestDrawingAutomationTools:
         )
 
 
+class TestDrawingPackageTools:
+    """BOM, sheet scale and the A3 package against the mock adapter."""
+
+    @pytest.mark.asyncio
+    async def test_bom_and_scale(
+        self, mcp_server, mock_adapter, mock_config, tmp_path: Path
+    ) -> None:
+        await register_drawing_automation_tools(mcp_server, mock_adapter, mock_config)
+        await _drawing_with_views(mock_adapter, tmp_path)
+        view = mock_adapter._drawing_views[0]
+
+        bom = await (await _tool(mcp_server, "insert_bom_table"))(
+            input_data=InsertBomTableInput(view_name=view, bom_type="parts_only")
+        )
+        scale = await (await _tool(mcp_server, "set_sheet_scale"))(
+            input_data=SetSheetScaleInput(numerator=1, denominator=2)
+        )
+
+        assert bom["status"] == "success"
+        assert bom["message"] == f"Inserted a parts_only BOM on {view}"
+        assert bom["data"]["row_count"] == 2
+        assert scale["message"] == "Sheet scale set to 1:2"
+        assert scale["data"] == {"sheet": "Sheet1", "scale": "1:2", "requested": "1:2"}
+
+    @pytest.mark.asyncio
+    async def test_generate_drawing_package(
+        self, mcp_server, mock_adapter, mock_config, tmp_path: Path
+    ) -> None:
+        await register_drawing_automation_tools(mcp_server, mock_adapter, mock_config)
+        model = tmp_path / "block.SLDPRT"
+        model.write_bytes(b"")
+
+        result = await (await _tool(mcp_server, "generate_drawing_package"))(
+            input_data=GenerateDrawingPackageInput(
+                model_path=str(model), drawing_number="BLK-01"
+            )
+        )
+
+        drawing = str(tmp_path / "BLK-01.SLDDRW")
+        pdf = str(tmp_path / "BLK-01.pdf")
+        assert result["status"] == "success"
+        assert result["message"] == f"Created {drawing} at 1:1 with PDF {pdf}"
+        assert result["data"]["overlap_check"]["overlaps_after"] == 0
+
+    @pytest.mark.asyncio
+    async def test_remaining_overlaps_fail_the_package_with_data(
+        self, mcp_server, mock_config
+    ) -> None:
+        async def create_standard_drawing(*_args):
+            return AdapterResult(
+                status=AdapterResultStatus.ERROR,
+                error="Drawing saved but 1 overlap(s) remain",
+                data={"overlap_check": {"overlaps_after": 1}},
+            )
+
+        adapter = SimpleNamespace(create_standard_drawing=create_standard_drawing)
+        await register_drawing_automation_tools(mcp_server, adapter, mock_config)
+
+        result = await (await _tool(mcp_server, "generate_drawing_package"))(
+            {"model_path": "C:/parts/block.SLDPRT"}
+        )
+
+        assert result["status"] == "error"
+        assert result["message"].startswith("Failed to create the standard drawing")
+        assert result["data"]["overlap_check"]["overlaps_after"] == 1
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("tool", "payload", "setup", "error_type"),
@@ -83,6 +159,39 @@ class TestDrawingAutomationTools:
         ("arrange_dimensions", {}, "create_assembly", "wrong_document_type"),
         ("arrange_dimensions", {"view_name": "Side"}, "views", "not_found"),
         ("arrange_dimensions", {"view_name": 7}, "views", "invalid_input"),
+        ("insert_bom_table", {"view_name": "Side"}, "views", "not_found"),
+        ("insert_bom_table", {"view_name": "V1"}, "create_part", "wrong_document_type"),
+        ("insert_bom_table", {}, "views", "invalid_input"),
+        (
+            "set_sheet_scale",
+            {"numerator": 0, "denominator": 2},
+            "views",
+            "invalid_input",
+        ),
+        (
+            "set_sheet_scale",
+            {"numerator": -1, "denominator": 2},
+            "views",
+            "invalid_input",
+        ),
+        (
+            "set_sheet_scale",
+            {"numerator": 1, "denominator": 2},
+            "create_part",
+            "wrong_document_type",
+        ),
+        (
+            "generate_drawing_package",
+            {"model_path": "C:/no/such/part.SLDPRT"},
+            "views",
+            "not_found",
+        ),
+        (
+            "generate_drawing_package",
+            {"model_path": "C:/parts/drawing.SLDDRW"},
+            "views",
+            "invalid_input",
+        ),
     ],
 )
 async def test_failures_carry_an_actionable_error_type(

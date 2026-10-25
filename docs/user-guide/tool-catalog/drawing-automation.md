@@ -1,10 +1,10 @@
 # Drawing Automation Tools
 
-Put the model's dimensions on a drawing and lay them out so nothing overlaps: each dimension shown once, placed outside the views in rows, and checked against the real geometry SolidWorks reports.
+Put the model's dimensions on a drawing and lay them out so nothing overlaps, add a bill of materials, set the sheet scale, or make a complete A3 drawing of a part or assembly in one call.
 
-> **Prerequisite:** An active Drawing document with views of a model.
+> **Prerequisite:** An active Drawing document with views of a model; generate_drawing_package only needs a saved part or assembly.
 
-**Total tools in this category: 2**
+**Total tools in this category: 5**
 
 ---
 
@@ -32,6 +32,48 @@ Move drawing dimensions so nothing overlaps, then check the real result.
 
 ```json
 {}
+```
+
+---
+
+### `insert_bom_table`
+
+Insert a bill-of-materials table for an assembly view on the active drawing.
+
+**Prerequisite:** SolidWorks running
+
+**Sample call:**
+
+```json
+{"view_name": "Drawing View1"}
+```
+
+---
+
+### `set_sheet_scale`
+
+Set the active drawing sheet's scale; views using the sheet scale follow.
+
+**Prerequisite:** SolidWorks running
+
+**Sample call:**
+
+```json
+{"numerator": 1, "denominator": 2}
+```
+
+---
+
+### `generate_drawing_package`
+
+Create a complete A3 drawing of a part or assembly in one call.
+
+**Prerequisite:** SolidWorks running
+
+**Sample call:**
+
+```json
+{"model_path": "C:/parts/Mounting Plate.SLDPRT", "drawing_number": "MP-01"}
 ```
 
 ---

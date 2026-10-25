@@ -40,6 +40,20 @@ off live against SolidWorks 2026:
   and checks the real geometry for overlaps; any that remain are listed in
   the error.
 
+Drawing-package tools, the last part of @SaiqKamran's #117:
+
+- **`insert_bom_table`** (#148): a bill of materials for an assembly drawing
+  view (top-level, parts-only or indented), snapped to the sheet's BOM anchor
+  with the library `bom-standard` template by default.
+- **`set_sheet_scale`** (#149): sets the active sheet's scale and reads it back
+  from the sheet.
+- **`generate_drawing_package`** (#150): a complete A3 drawing of a part or
+  assembly in one call: ISO sheet format, third-angle views plus an isometric
+  at the largest standard scale that fits, model dimensions shown once and laid
+  out with `arrange_dimensions`, a filled title block, view captions and a
+  NOTES block, checked for overlaps on the read-back geometry, saved as
+  `<drawing number>.SLDDRW` plus a PDF.
+
 ## [1.4.0] - 2026-10-22
 
 Minor release. New tools and a uniform error contract; every change is
